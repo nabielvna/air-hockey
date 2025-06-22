@@ -7,22 +7,22 @@ import logging
 import threading
 import time
 from collections import deque
-from settings import *
+from settings import * # Pastikan settings.py sudah diupdate dengan GLOW_COLOR, SHADOW_COLOR, dll.
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 class Renderer:
     def __init__(self, screen):
         self.screen = screen
-        # Menggunakan font default Pygame (None)
         self.score_font = pygame.font.Font(None, 74)
         self.info_font = pygame.font.Font(None, 50)
         self.menu_font = pygame.font.Font(None, 60)
-        self.small_font = pygame.font.Font(None, 36) # Untuk info server
+        self.small_font = pygame.font.Font(None, 36)
         self.countdown_font = pygame.font.Font(None, 150)
         self.puck_trail = deque(maxlen=10)
 
-    def draw_menu(self, message):
+    def draw_main_menu(self, message):
+        # Ini adalah menu utama sebelum atau sesudah game
         self.screen.fill(BLACK)
         title_text = self.menu_font.render("Air Hockey", True, WHITE)
         start_text = self.menu_font.render("Start Game", True, WHITE)
@@ -36,7 +36,7 @@ class Renderer:
 
         self.screen.blit(title_text, title_rect)
         self.screen.blit(start_text, start_rect)
-        if message == "game_over": # Hanya tampilkan tombol restart jika game over
+        if message == "game_over":
             self.screen.blit(restart_text, restart_rect)
         self.screen.blit(quit_text, quit_rect)
 
@@ -44,11 +44,37 @@ class Renderer:
 
         return start_rect, restart_rect, quit_rect
 
+    def draw_ingame_menu(self):
+        # Ini adalah menu saat game sedang berjalan (misal: setelah tombol Esc ditekan)
+        # Tambahkan overlay semi-transparan
+        overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180)) # Hitam dengan alpha 180 (semi-transparan)
+        self.screen.blit(overlay, (0, 0))
+
+        menu_title = self.menu_font.render("PAUSED", True, WHITE)
+        restart_game_text = self.info_font.render("Restart Game", True, WHITE)
+        quit_game_text = self.info_font.render("Quit Game", True, WHITE)
+        resume_game_text = self.info_font.render("Resume (Esc)", True, WHITE)
+
+        menu_title_rect = menu_title.get_rect(center=(WIDTH / 2, HEIGHT / 4))
+        restart_game_rect = restart_game_text.get_rect(center=(WIDTH / 2, HEIGHT / 2 - 60))
+        quit_game_rect = quit_game_text.get_rect(center=(WIDTH / 2, HEIGHT / 2 + 30))
+        resume_game_rect = resume_game_text.get_rect(center=(WIDTH / 2, HEIGHT * 3 / 4))
+
+        self.screen.blit(menu_title, menu_title_rect)
+        self.screen.blit(restart_game_text, restart_game_rect)
+        self.screen.blit(quit_game_text, quit_game_rect)
+        self.screen.blit(resume_game_text, resume_game_rect)
+
+        pygame.display.flip()
+
+        return restart_game_rect, quit_game_rect # Mengembalikan rects untuk deteksi klik
+
     def draw(self, state, player_id, connection_info=None):
-        self.screen.fill(BLACK) # Papan gelap
-        self.draw_border() # Pembatas dengan glow
-        self.draw_board() # Papan dengan glow
-        self.draw_goals() # Gawang putih
+        self.screen.fill(BLACK)
+        self.draw_border()
+        self.draw_board()
+        self.draw_goals()
 
         if not state:
             if connection_info:
@@ -57,7 +83,6 @@ class Renderer:
                 self.draw_message("Connecting to server...")
             return
 
-        # Menampilkan pesan status game
         if state['status'] == 'waiting':
             self.draw_message("Waiting for opponent...")
         elif state['status'] == 'game_over':
@@ -69,15 +94,12 @@ class Renderer:
             else:
                 self.draw_message("YOU LOSE", f"Final Score: {state['scores'].get('1', 0)} - {state['scores'].get('2', 0)}")
         
-        # Gambar elemen game hanya jika status aktif
         if state['status'] == 'active':
             self.draw_game_elements(state, player_id)
         
-        # Tampilkan countdown jika ada
         if state.get('countdown', 0) > 0:
             self.draw_countdown(state['countdown'])
 
-        # Tampilkan info koneksi di pojok kanan atas
         if connection_info and 'server_info' in connection_info:
             self.draw_server_info(connection_info['server_info'])
 
@@ -109,7 +131,6 @@ class Renderer:
         pygame.draw.rect(self.screen, WHITE, (WIDTH - GOAL_WIDTH, GOAL_Y_START, GOAL_WIDTH, GOAL_HEIGHT), 5)
 
     def draw_game_elements(self, state, player_id):
-        # Gambar paddle dengan warna lebih terang
         for pid_str, p_data in state['paddles'].items():
             pid = int(pid_str)
             color = LIGHT_BLUE if pid == 1 else LIGHT_RED
@@ -118,7 +139,6 @@ class Renderer:
             if pid == player_id:
                 pygame.draw.circle(self.screen, WHITE, pos, PADDLE_RADIUS, 3)
 
-        # Shadow puck
         puck_data = state['puck']
         current_puck_pos = (int(puck_data['x']), int(puck_data['y']))
         self.puck_trail.appendleft(current_puck_pos)
@@ -128,15 +148,12 @@ class Renderer:
             radius = max(1, PUCK_RADIUS - i * (PUCK_RADIUS // len(self.puck_trail)))
             
             s = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-            # Menggunakan SHADOW_COLOR dari settings.py
             pygame.draw.circle(s, (SHADOW_COLOR[0], SHADOW_COLOR[1], SHADOW_COLOR[2], alpha), (radius, radius), radius)
             self.screen.blit(s, (pos_tuple[0] - radius, pos_tuple[1] - radius))
 
-        # Main puck (putih dengan outline hitam)
         pygame.draw.circle(self.screen, WHITE, current_puck_pos, PUCK_RADIUS)
         pygame.draw.circle(self.screen, BLACK, current_puck_pos, PUCK_RADIUS, 2)
 
-        # Scores (menggunakan warna paddle yang lebih terang)
         scores = state['scores']
         p1_score_text = str(scores.get('1', 0))
         p2_score_text = str(scores.get('2', 0))
@@ -167,17 +184,16 @@ class LoadBalancerClient:
         self.player_id = None
         self.latest_state = None
         self.running = True
-        self.connected = False # Status koneksi ke game server via LB
+        self.connected = False
         self.lock = threading.Lock()
         self.buffer = ""
-        self.connection_info = {} # Untuk menampilkan status koneksi di UI
+        self.connection_info = {}
 
     def connect(self):
-        if self.connected and self.socket: # Jika sudah terhubung dan socket masih ada
+        if self.connected and self.socket:
             logging.info("Already connected. Skipping new connection.")
             return True
         
-        # Tutup socket lama jika ada
         if self.socket:
             try:
                 self.socket.close()
@@ -192,12 +208,11 @@ class LoadBalancerClient:
             }
             
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.settimeout(10) # Timeout untuk koneksi awal ke LB
+            self.socket.settimeout(10)
             self.socket.connect(self.lb_address)
             
             logging.info(f"Connected to load balancer at {self.lb_address}")
             
-            # Tunggu pesan inisialisasi dari server (yang di-proxy oleh LB)
             self.connection_info = {
                 'status': 'Connected to Load Balancer',
                 'detail': 'Waiting for server assignment...'
@@ -210,7 +225,7 @@ class LoadBalancerClient:
                     self.player_id = data['player_id']
                     self.connected = True
                     self.connection_info = {
-                        'server_info': f'{self.lb_address[0]}:{self.lb_address[1]}' # Menunjukkan koneksi via LB
+                        'server_info': f'{self.lb_address[0]}:{self.lb_address[1]}'
                     }
                     logging.info(f"Assigned Player ID: {self.player_id} via Load Balancer")
                     return True
@@ -221,7 +236,6 @@ class LoadBalancerClient:
                     }
                     logging.error(f"Load Balancer error: {data['error']}")
                     return False
-            # Jika tidak ada init data atau data tidak valid
             self.connection_info = {
                 'status': 'Connection Failed',
                 'detail': 'Invalid server response'
@@ -247,7 +261,6 @@ class LoadBalancerClient:
             }
             logging.error(f"Unexpected error during connection: {e}")
         finally:
-            # Tutup socket jika koneksi gagal atau inisialisasi tidak berhasil
             if self.socket and not self.connected:
                 try:
                     self.socket.close()
@@ -259,7 +272,6 @@ class LoadBalancerClient:
     def _receive_message(self):
         try:
             while '\n' not in self.buffer:
-                # Periksa apakah socket masih valid sebelum recv
                 if not self.socket:
                     return None
                 data = self.socket.recv(4096).decode('utf-8')
@@ -274,17 +286,16 @@ class LoadBalancerClient:
             return None
 
     def listen(self):
-        """Listen for messages from server via load balancer"""
         while self.running:
             if not self.connected:
-                time.sleep(0.5) # Tunggu sebentar jika tidak terhubung
+                time.sleep(0.5)
                 continue
 
             message_str = self._receive_message()
             if message_str is None:
                 logging.warning("Lost connection to server via load balancer")
                 self.handle_disconnection()
-                continue # Lanjutkan loop untuk mencoba reconnect
+                continue
 
             try:
                 state = json.loads(message_str)
@@ -298,8 +309,7 @@ class LoadBalancerClient:
                 self.handle_disconnection()
 
     def handle_disconnection(self):
-        """Handle disconnection from game server"""
-        if not self.connected: # Sudah ditangani
+        if not self.connected:
             return
         
         self.connected = False
@@ -311,18 +321,13 @@ class LoadBalancerClient:
             self.socket = None
         
         with self.lock:
-            self.latest_state = None # Clear state saat terputus
+            self.latest_state = None
         
         self.connection_info = {
             'status': 'Connection Lost!',
-            'detail': 'Attempting reconnect...'
+            'detail': 'Please go to main menu and try again.'
         }
-        
-        logging.info("Disconnected from game server. Attempting to reconnect via load balancer...")
-        # Reconnect logic will be handled by the main loop by setting menu_state to "main"
-        # and letting the user click "Start Game" again.
-        # Or you can add an automatic reconnect attempt here for seamless experience.
-        # For now, let's rely on the menu.
+        logging.info("Disconnected from game server.")
 
     def send_paddle_update(self, pos):
         if not self.connected or not self.socket:
@@ -343,7 +348,6 @@ class LoadBalancerClient:
         return self.connection_info
 
     def start_listening_thread(self):
-        # Pastikan hanya satu thread listen yang berjalan
         for t in threading.enumerate():
             if t.name == "ClientListenThread":
                 logging.info("Listen thread already running.")
@@ -361,7 +365,7 @@ class LoadBalancerClient:
                 self.socket.close()
                 logging.info("Socket closed.")
             except OSError as e:
-                logging.warning(f"Error closing socket: {e}")
+                    logging.warning(f"Error closing socket: {e}")
             self.socket = None
 
 def main():
@@ -394,100 +398,140 @@ def main():
 
     client = LoadBalancerClient(lb_ip, lb_port)
     
-    menu_state = "main" # "main", "game"
+    # State untuk mengelola tampilan: "main_menu", "game_active", "ingame_menu", "game_over_screen"
+    game_display_state = "main_menu" 
     
-    # Variabel untuk menyimpan rect tombol
-    start_button_rect = None
-    restart_button_rect = None
-    quit_button_rect = None
+    # Rects untuk tombol menu utama
+    main_menu_start_rect = None
+    main_menu_restart_rect = None
+    main_menu_quit_rect = None
+
+    # Rects untuk tombol menu in-game
+    ingame_menu_restart_rect = None
+    ingame_menu_quit_rect = None
 
     client.running = True
     while client.running:
         current_game_state = client.get_state()
-        connection_info = client.get_connection_info() # Ambil info koneksi terbaru
+        connection_info = client.get_connection_info()
 
-        # Logika transisi menu
-        # Jika game over (dari server) dan kita sedang di game, pindah ke menu
-        if current_game_state and current_game_state['status'] == 'game_over' and client.game_started:
-            logging.info("Client detected game_over status from server. Returning to menu.")
-            client.game_started = False
-            menu_state = "main"
-        # Jika koneksi terputus saat di game, pindah ke menu
-        if not client.connected and menu_state == "game":
-            logging.warning("Connection lost during game. Returning to main menu.")
-            menu_state = "main"
-            client.game_started = False
-            client.latest_state = None # Clear state for menu display
+        # Logika transisi state game_display_state
+        if game_display_state == "game_active":
+            if not client.connected: # Jika koneksi putus saat game aktif
+                logging.warning("Connection lost during game_active state. Returning to main menu.")
+                game_display_state = "main_menu"
+                client.latest_state = None # Clear state for menu display
+            elif current_game_state and current_game_state['status'] == 'game_over':
+                logging.info("Game Over detected from server. Transitioning to game_over_screen.")
+                game_display_state = "game_over_screen"
+        
+        # Penanganan Event Pygame
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                client.running = False
+            
+            # Deteksi tombol ESC untuk membuka/menutup menu in-game
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                if game_display_state == "game_active":
+                    game_display_state = "ingame_menu"
+                    logging.info("In-game menu opened.")
+                elif game_display_state == "ingame_menu":
+                    game_display_state = "game_active"
+                    logging.info("In-game menu closed. Resuming game.")
+            
+            # Penanganan klik mouse berdasarkan state
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
 
-        if menu_state == "main":
-            menu_message = "game_over" if current_game_state and current_game_state['status'] == 'game_over' else "main"
-            start_rect, restart_rect, quit_rect = renderer.draw_menu(message=menu_message)
-            start_button_rect = start_rect
-            restart_button_rect = restart_rect
-            quit_button_rect = quit_rect
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    client.running = False
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if start_button_rect and start_button_rect.collidepoint(event.pos):
-                        logging.info("Start Game button clicked.")
-                        if not client.connected: # Coba connect hanya jika belum terhubung
-                            if client.connect(): # Mencoba koneksi baru ke LB
-                                client.start_listening_thread() # Mulai thread listen setelah connect
-                                client.game_started = True
-                                menu_state = "game"
-                                client.latest_state = None # Reset state agar tidak render state lama
+                if game_display_state == "main_menu" or game_display_state == "game_over_screen":
+                    # Klik di menu utama (atau setelah game over)
+                    if main_menu_start_rect and main_menu_start_rect.collidepoint(mouse_pos):
+                        logging.info("Main menu: Start Game clicked.")
+                        if not client.connected:
+                            if client.connect():
+                                client.start_listening_thread()
+                                game_display_state = "game_active"
+                                client.latest_state = None # Reset state
                             else:
-                                # Jika gagal koneksi, tampilkan pesan error singkat di menu
-                                renderer.draw_connection_status(client.get_connection_info())
+                                renderer.draw_connection_status(connection_info)
                                 pygame.display.flip()
                                 pygame.time.wait(1000)
-                        else: # Sudah terhubung, langsung mulai game (mungkin dari game_over sebelumnya)
-                            client.game_started = True
-                            menu_state = "game"
+                        else: # Sudah terhubung, langsung masuk game
+                            game_display_state = "game_active"
                             client.latest_state = None
                             logging.info("Already connected, starting new game session.")
-                    elif restart_button_rect and restart_button_rect.collidepoint(event.pos) and current_game_state and current_game_state['status'] == 'game_over':
-                        logging.info("Restart Game button clicked.")
-                        # Untuk restart, klien hanya perlu mengatur ulang statusnya sendiri dan server
-                        # akan mengirim state game baru jika ada slot yang tersedia atau game dimulai ulang.
-                        # Tidak perlu reconnect jika masih terhubung.
+                    elif main_menu_restart_rect and main_menu_restart_rect.collidepoint(mouse_pos) and game_display_state == "game_over_screen":
+                        logging.info("Main menu: Restart Game clicked.")
+                        # Jika terhubung, cukup ubah state. Server akan mereset game secara otomatis
+                        # saat kedua pemain aktif kembali (jika itu logikanya).
+                        # Jika tidak terhubung, coba koneksi ulang.
                         if client.connected:
-                            client.game_started = True
-                            menu_state = "game"
-                            client.latest_state = None # Reset state agar tidak render state lama
-                            logging.info("Attempting to restart game with existing connection.")
-                        else: # Jika terputus, coba connect lagi seperti Start Game
-                             if client.connect():
+                            game_display_state = "game_active"
+                            client.latest_state = None
+                        else:
+                            if client.connect():
                                 client.start_listening_thread()
-                                client.game_started = True
-                                menu_state = "game"
+                                game_display_state = "game_active"
                                 client.latest_state = None
-                             else:
-                                renderer.draw_connection_status(client.get_connection_info())
+                            else:
+                                renderer.draw_connection_status(connection_info)
                                 pygame.display.flip()
                                 pygame.time.wait(1000)
-                    elif quit_button_rect and quit_button_rect.collidepoint(event.pos):
-                        logging.info("Quit button clicked.")
+                    elif main_menu_quit_rect and main_menu_quit_rect.collidepoint(mouse_pos):
+                        logging.info("Main menu: Quit clicked.")
                         client.running = False
-        
-        elif menu_state == "game":
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    client.running = False
-                if event.type == pygame.MOUSEMOTION:
-                    client.send_paddle_update(pygame.mouse.get_pos())
-                if event.type == pygame.MOUSEBUTTONDOWN: # Juga kirim update posisi saat klik
-                    client.send_paddle_update(pygame.mouse.get_pos())
 
-            # Render game state hanya jika terhubung dan game_started
-            if client.connected and client.game_started and current_game_state:
+                elif game_display_state == "ingame_menu":
+                    # Klik di menu in-game
+                    if ingame_menu_restart_rect and ingame_menu_restart_rect.collidepoint(mouse_pos):
+                        logging.info("In-game menu: Restart Game clicked.")
+                        # Logika restart di sini. Kita akan kembali ke menu utama untuk memicu restart dari sana.
+                        game_display_state = "main_menu"
+                        client.latest_state = None # Clear state
+                    elif ingame_menu_quit_rect and ingame_menu_quit_rect.collidepoint(mouse_pos):
+                        logging.info("In-game menu: Quit Game clicked.")
+                        client.running = False
+            
+            # Update posisi paddle hanya saat game aktif dan bukan di menu in-game
+            if game_display_state == "game_active" and event.type == pygame.MOUSEMOTION:
+                client.send_paddle_update(pygame.mouse.get_pos())
+            # Juga kirim update posisi saat klik (jika ingin paddle bergerak saat mouse diklik)
+            if game_display_state == "game_active" and event.type == pygame.MOUSEBUTTONDOWN:
+                client.send_paddle_update(pygame.mouse.get_pos())
+
+
+        # Proses Rendering berdasarkan game_display_state
+        if game_display_state == "main_menu":
+            # Tampilkan menu utama (sebelum game dimulai atau setelah game over)
+            main_menu_start_rect, main_menu_restart_rect, main_menu_quit_rect = renderer.draw_main_menu(
+                "game_over" if current_game_state and current_game_state['status'] == 'game_over' else "main"
+            )
+        elif game_display_state == "game_active":
+            # Tampilkan game jika terhubung, game aktif, dan ada state
+            if client.connected and current_game_state:
                 renderer.draw(current_game_state, client.player_id, connection_info)
-            else:
-                # Jika tidak terhubung atau game_started false, tampilkan info koneksi
+            else: # Jika tidak terhubung/ada masalah, tampilkan status koneksi
+                renderer.draw_connection_status(connection_info)
+                pygame.display.flip() # Pastikan ini di-flip
+        elif game_display_state == "ingame_menu":
+            # Pertama gambar game di belakang, lalu overlay menu
+            if client.connected and current_game_state:
+                renderer.draw(current_game_state, client.player_id, connection_info) # Gambar game sebagai background
+            else: # Jika koneksi putus saat di in-game menu
                 renderer.draw_connection_status(connection_info)
                 pygame.display.flip()
+
+            ingame_menu_restart_rect, ingame_menu_quit_rect = renderer.draw_ingame_menu()
+        elif game_display_state == "game_over_screen":
+            # Tampilkan layar game over, lalu transisi kembali ke main_menu
+            if client.connected and current_game_state:
+                renderer.draw(current_game_state, client.player_id, connection_info)
+            else: # Jika koneksi putus saat di layar game over
+                renderer.draw_connection_status(connection_info)
+                pygame.display.flip()
+            # Tidak perlu memanggil draw_main_menu lagi di sini,
+            # karena transisinya sudah diatur di loop event.
+            # Ini akan menyebabkan tampilan main_menu dipanggil di iterasi berikutnya.
 
         clock.tick(FPS)
     
