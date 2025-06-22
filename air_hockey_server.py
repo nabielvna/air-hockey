@@ -1,4 +1,4 @@
-# server.py
+# air_hockey_server.py (Modifikasi)
 import socket
 import threading
 import json
@@ -84,13 +84,26 @@ class Game:
                 
                 # Pindahkan puck keluar dari tabrakan untuk mencegah tersangkut
                 overlap = (PADDLE_RADIUS + PUCK_RADIUS) - distance
-                self.puck.x -= norm_x * overlap
-                self.puck.y -= norm_y * overlap
+                self.puck.x += norm_x * overlap * 1.05 # Dorong sedikit lebih jauh
+                self.puck.y += norm_y * overlap * 1.05 # Dorong sedikit lebih jauh
 
-                self.puck.vx = norm_x * 9
-                self.puck.vy = norm_y * 9
+                # Tentukan kecepatan berdasarkan arah tabrakan dan kecepatan paddle
+                # Kecepatan dasar setelah pantulan
+                base_speed = 10 # Kecepatan pantul yang lebih konsisten
+                self.puck.vx = norm_x * base_speed
+                self.puck.vy = norm_y * base_speed
+                
                 # Tambahkan sedikit "spin" acak untuk menghindari gerakan bolak-balik yang membosankan
-                self.puck.vy += random.uniform(-0.5, 0.5)
+                self.puck.vy += random.uniform(-1, 1) # Rentang acak yang sedikit lebih besar
+                self.puck.vx += random.uniform(-1, 1)
+
+                # Batasi kecepatan maksimal puck agar tidak terlalu cepat
+                speed = (self.puck.vx**2 + self.puck.vy**2)**0.5
+                max_puck_speed = 20 # Contoh batasan kecepatan
+                if speed > max_puck_speed:
+                    scale = max_puck_speed / speed
+                    self.puck.vx *= scale
+                    self.puck.vy *= scale
 
         # Cek Gol
         # Cek Gol untuk Player 1 (gawang di kiri)
@@ -123,9 +136,14 @@ class Game:
             self.puck.reset(direction)
             self.last_goal_time = time.time()
 
-    def reset(self):
-        logging.info("Resetting game state.")
-        self.__init__()
+    def reset_game_state(self): # Method baru untuk reset game
+        logging.info("Explicit game state reset requested.")
+        self.__init__() # Mereset semua properti game
+        if len(self.paddles) == 2: # Jika sudah ada 2 pemain, langsung aktifkan game
+            self.status = 'active'
+            self.puck.reset(random.choice([-1, 1])) # Luncurkan puck secara acak
+        else:
+            self.status = 'waiting' # Jika belum 2 pemain, kembali ke waiting
 
     def get_state(self):
         return {
@@ -156,7 +174,6 @@ class GameServer:
                 state = self.game.get_state()
                 message = json.dumps(state) + '\n'
                 
-                # Buat salinan untuk mencegah error saat iterasi jika ada diskoneksi
                 disconnected_clients = []
                 for pid, conn in list(self.clients.items()):
                     try:
@@ -164,7 +181,6 @@ class GameServer:
                     except (socket.error, BrokenPipeError):
                         disconnected_clients.append(pid)
             
-            # Handle diskoneksi di luar lock utama
             for pid in disconnected_clients:
                 self.handle_disconnection(pid)
 
@@ -176,16 +192,20 @@ class GameServer:
             try:
                 data = conn.recv(1024).decode('utf-8')
                 if not data:
-                    break # Koneksi ditutup oleh klien
+                    break
                 
                 buffer += data
                 while '\n' in buffer:
                     command_str, buffer = buffer.split('\n', 1)
                     command = json.loads(command_str)
                     
-                    if command['type'] == 'update_paddle':
-                        with self.lock:
+                    with self.lock:
+                        if command['type'] == 'update_paddle':
                             self.game.paddles[player_id].update_pos(command['pos'][0], command['pos'][1])
+                        elif command['type'] == 'reset_game': # Tangani perintah reset_game
+                            logging.info(f"Player {player_id} requested game reset.")
+                            self.game.reset_game_state() # Panggil metode reset baru
+                            # Perlu diingat bahwa semua klien akan menerima status reset ini melalui broadcast
 
             except (socket.error, json.JSONDecodeError, ConnectionResetError):
                 break
@@ -198,10 +218,9 @@ class GameServer:
                 logging.info(f"Player {player_id} disconnected.")
                 self.clients.pop(player_id, None)
                 
-                # Jika semua pemain keluar, reset total
                 if not self.clients:
                     self.game.reset()
-                else: # Jika masih ada pemain, set status ke 'waiting'
+                else:
                     self.game.status = 'waiting'
                     self.game.winner = 'opponent_disconnected'
 
@@ -209,9 +228,7 @@ class GameServer:
         self.server_socket.listen()
         logging.info(f"Server listening on {SERVER_HOST}:{SERVER_PORT}")
 
-        # Thread untuk menyiarkan state game
         threading.Thread(target=self.broadcast, daemon=True).start()
-        # Thread untuk update fisika game
         threading.Thread(target=self.game_loop, daemon=True).start()
 
         while True:
@@ -227,7 +244,6 @@ class GameServer:
                 self.clients[player_id] = conn
                 logging.info(f"Player {player_id} connected from {addr}")
                 
-                # Kirim ID ke client
                 init_msg = json.dumps({'type': 'init', 'player_id': player_id}) + '\n'
                 conn.sendall(init_msg.encode('utf-8'))
                 
@@ -242,7 +258,7 @@ class GameServer:
         while True:
             with self.lock:
                 self.game.update()
-            time.sleep(1/120) # Fisika berjalan lebih cepat dari broadcast
+            time.sleep(1/120)
 
 if __name__ == "__main__":
     server = GameServer(SERVER_HOST, SERVER_PORT)
