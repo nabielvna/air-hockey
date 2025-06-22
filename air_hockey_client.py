@@ -21,6 +21,7 @@ class Renderer:
 
     def draw(self, state, player_id):
         self.screen.fill(BLACK) # Papan menjadi hitam
+        self.draw_border() # Gambar pembatas lapangan
         self.draw_board()
         self.draw_goals()
 
@@ -52,6 +53,20 @@ class Renderer:
     def draw_board(self):
         pygame.draw.line(self.screen, GRAY, (WIDTH / 2, 0), (WIDTH / 2, HEIGHT), 5)
         pygame.draw.circle(self.screen, GRAY, (WIDTH / 2, HEIGHT / 2), 75, 5)
+
+    def draw_border(self):
+        # Gambar garis pembatas di tepi lapangan
+        # Garis atas
+        pygame.draw.line(self.screen, GRAY, (0, 0), (WIDTH, 0), 5)
+        # Garis bawah
+        pygame.draw.line(self.screen, GRAY, (0, HEIGHT), (WIDTH, HEIGHT), 5)
+        # Garis kiri (kecuali area gawang)
+        pygame.draw.line(self.screen, GRAY, (0, 0), (0, GOAL_Y_START), 5)
+        pygame.draw.line(self.screen, GRAY, (0, GOAL_Y_START + GOAL_HEIGHT), (0, HEIGHT), 5)
+        # Garis kanan (kecuali area gawang)
+        pygame.draw.line(self.screen, GRAY, (WIDTH, 0), (WIDTH, GOAL_Y_START), 5)
+        pygame.draw.line(self.screen, GRAY, (WIDTH, GOAL_Y_START + GOAL_HEIGHT), (WIDTH, HEIGHT), 5)
+
 
     def draw_goals(self):
         # Gawang kiri (Player 2 scores here)
