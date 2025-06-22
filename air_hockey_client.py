@@ -14,10 +14,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class Renderer:
     def __init__(self, screen):
         self.screen = screen
-        self.score_font = pygame.font.Font("assets/kenvector_future.ttf", 74) # Assuming you have this font
-        self.info_font = pygame.font.Font("assets/kenvector_future.ttf", 50)
-        self.menu_font = pygame.font.Font("assets/kenvector_future.ttf", 60)
-        self.countdown_font = pygame.font.Font("assets/kenvector_future.ttf", 150)
+        self.score_font = pygame.font.Font("assets/myfont.ttf", 74)
+        self.info_font = pygame.font.Font("assets/myfont.ttf", 50)
+        self.menu_font = pygame.font.Font("assets/myfont.ttf", 60)
+        self.countdown_font = pygame.font.Font("assets/myfont.ttf", 150)
         self.puck_trail = deque(maxlen=10) # Simpan 10 posisi puck terakhir
 
     def draw_menu(self, message):
