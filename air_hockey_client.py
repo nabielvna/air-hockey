@@ -20,6 +20,7 @@ class Renderer:
     def draw(self, state, player_id):
         self.screen.fill(WHITE)
         self.draw_board()
+        self.draw_goals() # Gambar gawang
 
         if not state:
             self.draw_message("Connecting to server...")
@@ -49,6 +50,12 @@ class Renderer:
     def draw_board(self):
         pygame.draw.line(self.screen, GRAY, (WIDTH / 2, 0), (WIDTH / 2, HEIGHT), 5)
         pygame.draw.circle(self.screen, GRAY, (WIDTH / 2, HEIGHT / 2), 75, 5)
+
+    def draw_goals(self):
+        # Gawang kiri (Player 2 scores here)
+        pygame.draw.rect(self.screen, BLACK, (0, GOAL_Y_START, GOAL_WIDTH, GOAL_HEIGHT), 5)
+        # Gawang kanan (Player 1 scores here)
+        pygame.draw.rect(self.screen, BLACK, (WIDTH - GOAL_WIDTH, GOAL_Y_START, GOAL_WIDTH, GOAL_HEIGHT), 5)
 
     def draw_game_elements(self, state, player_id):
          # Gambar paddle

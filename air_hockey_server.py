@@ -83,10 +83,17 @@ class Game:
                 self.puck.vy += random.uniform(-0.5, 0.5)
 
         # Cek Gol
-        if self.puck.x - PUCK_RADIUS <= 0:
-            self.score_goal(2)
-        elif self.puck.x + PUCK_RADIUS >= WIDTH:
-            self.score_goal(1)
+        # Cek Gol untuk Player 1 (gawang di kiri)
+        if self.puck.x - PUCK_RADIUS <= GOAL_WIDTH and \
+           self.puck.y > GOAL_Y_START and self.puck.y < GOAL_Y_START + GOAL_HEIGHT:
+            self.score_goal(2) # Player 2 mencetak gol
+        # Cek Gol untuk Player 2 (gawang di kanan)
+        elif self.puck.x + PUCK_RADIUS >= WIDTH - GOAL_WIDTH and \
+             self.puck.y > GOAL_Y_START and self.puck.y < GOAL_Y_START + GOAL_HEIGHT:
+            self.score_goal(1) # Player 1 mencetak gol
+        # Tumbukan dinding samping jika bukan di area gawang
+        elif self.puck.x - PUCK_RADIUS <= 0 or self.puck.x + PUCK_RADIUS >= WIDTH:
+            self.puck.vx *= -1 # Pantulkan jika menabrak sisi luar gawang
 
     def score_goal(self, player_id):
         self.scores[player_id] += 1
