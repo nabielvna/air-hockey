@@ -1,4 +1,4 @@
-# air_hockey_client.py (Modifikasi)
+# air_hockey_client.py (Perbaikan Utama)
 import pygame
 import socket
 import json
@@ -44,9 +44,12 @@ class Renderer:
         return start_rect, restart_rect, quit_rect
 
     def draw_ingame_menu(self):
-        # Tambahkan overlay semi-transparan
+        # Draw the game state FIRST, then draw the transparent overlay and menu on top
+        # This ensures the "glitch" of not seeing the game under the menu is fixed.
+        # (This method should be called AFTER draw() has drawn the game background)
+
         overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        overlay.fill((0, 0, 0, 180)) # Hitam dengan alpha 180 (semi-transparan)
+        overlay.fill((0, 0, 0, 180))
         self.screen.blit(overlay, (0, 0))
 
         menu_title = self.menu_font.render("PAUSED", True, WHITE)
@@ -101,7 +104,9 @@ class Renderer:
         if connection_info and 'server_info' in connection_info:
             self.draw_server_info(connection_info['server_info'])
 
-        pygame.display.flip()
+        # Penting: pygame.display.flip() TIDAK DIPANGGIL di sini
+        # Ini akan dipanggil di main loop setelah semua rendering selesai,
+        # termasuk overlay menu jika ada.
 
     def draw_connection_status(self, info):
         status = info.get('status', 'Connecting...')
@@ -338,7 +343,7 @@ class LoadBalancerClient:
             logging.warning("Failed to send paddle update. Connection might be lost.")
             self.handle_disconnection()
 
-    def send_game_command(self, command_type): # Metode baru untuk mengirim perintah game
+    def send_game_command(self, command_type):
         if not self.connected or not self.socket:
             return
         try:
@@ -436,6 +441,7 @@ def main():
             if event.type == pygame.QUIT:
                 client.running = False
             
+            # Deteksi tombol ESC untuk membuka/menutup menu in-game
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if game_display_state == "game_active":
                     game_display_state = "ingame_menu"
@@ -444,6 +450,7 @@ def main():
                     game_display_state = "game_active"
                     logging.info("In-game menu closed. Resuming game.")
             
+            # Penanganan klik mouse berdasarkan state
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = event.pos
 
@@ -464,16 +471,16 @@ def main():
                             client.latest_state = None
                             logging.info("Already connected, starting new game session.")
                     elif main_menu_restart_rect and main_menu_restart_rect.collidepoint(mouse_pos) and game_display_state == "game_over_screen":
-                        logging.info("Main menu: Restart Game clicked.")
+                        logging.info("Main menu: Restart Game clicked (from game_over_screen).")
                         if client.connected:
                             client.send_game_command('reset_game') # Kirim perintah reset ke server
-                            game_display_state = "game_active"
+                            game_display_state = "game_active" # Kembali ke game, server akan mengirim state baru
                             client.latest_state = None
                             logging.info("Sent reset command to server, attempting to restart game.")
                         else:
                              if client.connect():
                                 client.start_listening_thread()
-                                client.send_game_command('reset_game') # Kirim perintah reset setelah reconnect
+                                client.send_game_command('reset_game')
                                 game_display_state = "game_active"
                                 client.latest_state = None
                              else:
@@ -486,40 +493,47 @@ def main():
 
                 elif game_display_state == "ingame_menu":
                     if ingame_menu_restart_rect and ingame_menu_restart_rect.collidepoint(mouse_pos):
-                        logging.info("In-game menu: Restart Game clicked.")
+                        logging.info("In-game menu: Restart Game clicked (from in-game menu).")
                         client.send_game_command('reset_game') # Kirim perintah reset ke server
                         game_display_state = "game_active" # Kembali ke game, server akan mengirim state baru
-                        client.latest_state = None # Clear state for immediate update
+                        client.latest_state = None
                     elif ingame_menu_quit_rect and ingame_menu_quit_rect.collidepoint(mouse_pos):
-                        logging.info("In-game menu: Quit Game clicked.")
+                        logging.info("In-game menu: Quit Game clicked (from in-game menu).")
                         client.running = False
             
-            # Update posisi paddle hanya saat game aktif dan TIDAK di menu in-game
+            # Update posisi paddle hanya saat game_display_state adalah "game_active"
             if game_display_state == "game_active" and (event.type == pygame.MOUSEMOTION or event.type == pygame.MOUSEBUTTONDOWN):
                 client.send_paddle_update(pygame.mouse.get_pos())
 
 
         # Proses Rendering berdasarkan game_display_state
-        if game_display_state == "main_menu" or game_display_state == "game_over_screen":
-            # draw_main_menu akan menangani tampilan game over juga
+        if game_display_state == "main_menu":
+            # Tampilkan menu utama (saat startup atau setelah game over)
             main_menu_start_rect, main_menu_restart_rect, main_menu_quit_rect = renderer.draw_main_menu(
-                "game_over" if game_display_state == "game_over_screen" else "main"
+                "game_over" if current_game_state and current_game_state['status'] == 'game_over' else "main"
             )
         elif game_display_state == "game_active":
+            # Gambar game dulu
             if client.connected and current_game_state:
                 renderer.draw(current_game_state, client.player_id, connection_info)
-            else:
+            else: # Jika tidak terhubung/ada masalah saat di game_active, tampilkan status koneksi
                 renderer.draw_connection_status(connection_info)
-                pygame.display.flip()
+            pygame.display.flip() # Panggil flip setelah semua elemen digambar
         elif game_display_state == "ingame_menu":
-            # Gambar dulu game di belakang (dari state terakhir), baru overlay menu
+            # Gambar game di belakang, lalu overlay menu
+            if client.connected and current_game_state:
+                renderer.draw(current_game_state, client.player_id, connection_info) # Gambar game sebagai background
+            else: # Jika koneksi putus saat di in-game menu, gambar status koneksi
+                renderer.draw_connection_status(connection_info)
+            ingame_menu_restart_rect, ingame_menu_quit_rect = renderer.draw_ingame_menu() # draw_ingame_menu sekarang memanggil flip sendiri
+        elif game_display_state == "game_over_screen":
+            # Gambar layar game over seperti game_active, lalu otomatis akan kembali ke main_menu di iterasi berikutnya
             if client.connected and current_game_state:
                 renderer.draw(current_game_state, client.player_id, connection_info)
             else:
                 renderer.draw_connection_status(connection_info)
-                pygame.display.flip()
-            ingame_menu_restart_rect, ingame_menu_quit_rect = renderer.draw_ingame_menu()
-        
+            pygame.display.flip()
+
         clock.tick(FPS)
     
     client.close()
