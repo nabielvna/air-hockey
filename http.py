@@ -1,6 +1,4 @@
-import sys
 import os.path
-import uuid
 from glob import glob
 from datetime import datetime
 
@@ -92,9 +90,6 @@ class HttpServer:
 		isi = "kosong"
 		return self.response(200,'OK',isi,headers)
 		
-			 	
-#>>> import os.path
-#>>> ext = os.path.splitext('/ak/52.png')
 
 if __name__=="__main__":
 	httpserver = HttpServer()
@@ -102,11 +97,6 @@ if __name__=="__main__":
 	print(d)
 	d = httpserver.proses('GET donalbebek.jpg HTTP/1.0')
 	print(d)
-	#d = httpserver.http_get('testing2.txt',{})
-	#print(d)
-#	d = httpserver.http_get('testing.txt')
-#	print(d)
-
 
 
 
