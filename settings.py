@@ -9,7 +9,7 @@ FPS = 60
 # Pengaturan Game
 PADDLE_RADIUS = 35
 PUCK_RADIUS = 20
-WINNING_SCORE = 5
+WINNING_SCORE = 10
 
 # Pengaturan Gawang
 GOAL_WIDTH = 20

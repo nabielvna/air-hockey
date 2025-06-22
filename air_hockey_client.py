@@ -68,7 +68,7 @@ class Renderer:
             pygame.draw.circle(self.screen, color, pos, PADDLE_RADIUS)
             # Beri sorotan pada paddle pemain
             if pid == player_id:
-                pygame.draw.circle(self.screen, BLACK, pos, PADDLE_RADIUS, 3)
+                pygame.draw.circle(self.screen, WHITE, pos, PADDLE_RADIUS, 3) # Sorotan paddle pemain juga putih agar kontras
 
         # Gambar shadow puck
         puck_data = state['puck']
@@ -83,12 +83,13 @@ class Renderer:
             
             # Buat permukaan sementara dengan alpha channel
             s = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, (0, 0, 0, alpha), (radius, radius), radius) # Warna hitam untuk shadow
+            pygame.draw.circle(s, (100, 100, 100, alpha), (radius, radius), radius) # Warna abu-abu gelap untuk shadow
             self.screen.blit(s, (pos[0] - radius, pos[1] - radius))
 
-        # Gambar puck utama
-        pygame.draw.circle(self.screen, BLACK, current_puck_pos, PUCK_RADIUS)
-        
+        # Gambar puck utama (warna putih)
+        pygame.draw.circle(self.screen, WHITE, current_puck_pos, PUCK_RADIUS)
+        pygame.draw.circle(self.screen, BLACK, current_puck_pos, PUCK_RADIUS, 2) # Tambahkan outline hitam tipis untuk visibilitas
+
         # Gambar skor
         scores = state['scores']
         # Pastikan key '1' dan '2' ada, berikan default 0 jika tidak
