@@ -3,7 +3,7 @@ SERVER_PORT = 9999
 INPUT_SERVER_IP = '127.0.0.1' # IP default yang akan diminta ke klien
 
 # Pengaturan Pygame
-WIDTH, HEIGHT = 800, 600
+WIDTH, HEIGHT = 1200, 800
 FPS = 60
 
 # Pengaturan Game
