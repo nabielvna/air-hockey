@@ -14,36 +14,13 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 class Renderer:
     def __init__(self, screen):
         self.screen = screen
-        self.score_font = pygame.font.Font("assets/myfont.ttf", 74)
-        self.info_font = pygame.font.Font("assets/myfont.ttf", 50)
-        self.menu_font = pygame.font.Font("assets/myfont.ttf", 60)
-        self.countdown_font = pygame.font.Font("assets/myfont.ttf", 150)
+        self.score_font = pygame.font.Font(None, 74)
+        self.info_font = pygame.font.Font(None, 50)
+        self.countdown_font = pygame.font.Font(None, 150)
         self.puck_trail = deque(maxlen=10) # Simpan 10 posisi puck terakhir
 
-    def draw_menu(self, message):
-        self.screen.fill(BLACK)
-        title_text = self.menu_font.render("Dark Air Hockey", True, WHITE)
-        start_text = self.menu_font.render("Start Game", True, WHITE)
-        restart_text = self.menu_font.render("Restart Game", True, WHITE)
-        quit_text = self.menu_font.render("Quit", True, WHITE)
-
-        title_rect = title_text.get_rect(center=(WIDTH / 2, HEIGHT / 4))
-        start_rect = start_text.get_rect(center=(WIDTH / 2, HEIGHT / 2 - 50))
-        restart_rect = restart_text.get_rect(center=(WIDTH / 2, HEIGHT / 2 + 50))
-        quit_rect = quit_text.get_rect(center=(WIDTH / 2, HEIGHT * 3 / 4))
-
-        self.screen.blit(title_text, title_rect)
-        self.screen.blit(start_text, start_rect)
-        if message == "game_over":
-            self.screen.blit(restart_text, restart_rect)
-        self.screen.blit(quit_text, quit_rect)
-
-        pygame.display.flip()
-
-        return start_rect, restart_rect, quit_rect
-
     def draw(self, state, player_id):
-        self.screen.fill(BLACK) # Papan tetap hitam
+        self.screen.fill(BLACK) # Papan menjadi hitam
         self.draw_border() # Gambar pembatas lapangan
         self.draw_board()
         self.draw_goals()
@@ -59,14 +36,14 @@ class Renderer:
             if winner == 'opponent_disconnected':
                  self.draw_message("Opponent Disconnected", "You win by default")
             elif winner == player_id:
-                self.draw_message("YOU WIN!", f"Final Score: {state['scores'].get('1', 0)} - {state['scores'].get('2', 0)}")
+                self.draw_message("YOU WIN!", f"Final Score: {state['scores']['1']} - {state['scores']['2']}")
             else:
-                self.draw_message("YOU LOSE", f"Final Score: {state['scores'].get('1', 0)} - {state['scores'].get('2', 0)}")
-
+                self.draw_message("YOU LOSE", f"Final Score: {state['scores']['1']} - {state['scores']['2']}")
+        
         # Gambar elemen game hanya jika status bukan waiting
-        if state['status'] == 'active':
+        if state['status'] != 'waiting':
             self.draw_game_elements(state, player_id)
-
+        
         # Tampilkan countdown jika ada
         if state.get('countdown', 0) > 0:
             self.draw_countdown(state['countdown'])
@@ -74,21 +51,21 @@ class Renderer:
         pygame.display.flip()
 
     def draw_board(self):
-        pygame.draw.line(self.screen, GLOW_COLOR, (WIDTH / 2, 0), (WIDTH / 2, HEIGHT), 5)
-        pygame.draw.circle(self.screen, GLOW_COLOR, (WIDTH / 2, HEIGHT / 2), 75, 5)
+        pygame.draw.line(self.screen, GRAY, (WIDTH / 2, 0), (WIDTH / 2, HEIGHT), 5)
+        pygame.draw.circle(self.screen, GRAY, (WIDTH / 2, HEIGHT / 2), 75, 5)
 
     def draw_border(self):
-        # Gambar garis pembatas di tepi lapangan dengan warna glow
+        # Gambar garis pembatas di tepi lapangan
         # Garis atas
-        pygame.draw.line(self.screen, GLOW_COLOR, (0, 0), (WIDTH, 0), 5)
+        pygame.draw.line(self.screen, GRAY, (0, 0), (WIDTH, 0), 5)
         # Garis bawah
-        pygame.draw.line(self.screen, GLOW_COLOR, (0, HEIGHT), (WIDTH, HEIGHT), 5)
+        pygame.draw.line(self.screen, GRAY, (0, HEIGHT), (WIDTH, HEIGHT), 5)
         # Garis kiri (kecuali area gawang)
-        pygame.draw.line(self.screen, GLOW_COLOR, (0, 0), (0, GOAL_Y_START), 5)
-        pygame.draw.line(self.screen, GLOW_COLOR, (0, GOAL_Y_START + GOAL_HEIGHT), (0, HEIGHT), 5)
+        pygame.draw.line(self.screen, GRAY, (0, 0), (0, GOAL_Y_START), 5)
+        pygame.draw.line(self.screen, GRAY, (0, GOAL_Y_START + GOAL_HEIGHT), (0, HEIGHT), 5)
         # Garis kanan (kecuali area gawang)
-        pygame.draw.line(self.screen, GLOW_COLOR, (WIDTH, 0), (WIDTH, GOAL_Y_START), 5)
-        pygame.draw.line(self.screen, GLOW_COLOR, (WIDTH, GOAL_Y_START + GOAL_HEIGHT), (WIDTH, HEIGHT), 5)
+        pygame.draw.line(self.screen, GRAY, (WIDTH, 0), (WIDTH, GOAL_Y_START), 5)
+        pygame.draw.line(self.screen, GRAY, (WIDTH, GOAL_Y_START + GOAL_HEIGHT), (WIDTH, HEIGHT), 5)
 
 
     def draw_goals(self):
@@ -98,15 +75,15 @@ class Renderer:
         pygame.draw.rect(self.screen, WHITE, (WIDTH - GOAL_WIDTH, GOAL_Y_START, GOAL_WIDTH, GOAL_HEIGHT), 5) # Gawang putih
 
     def draw_game_elements(self, state, player_id):
-         # Gambar paddle dengan warna lebih terang
+         # Gambar paddle
         for pid_str, p_data in state['paddles'].items():
             pid = int(pid_str)
-            color = LIGHT_BLUE if pid == 1 else LIGHT_RED
+            color = BLUE if pid == 1 else RED
             pos = (int(p_data['x']), int(p_data['y']))
             pygame.draw.circle(self.screen, color, pos, PADDLE_RADIUS)
             # Beri sorotan pada paddle pemain
             if pid == player_id:
-                pygame.draw.circle(self.screen, WHITE, pos, PADDLE_RADIUS, 3) # Sorotan tetap putih
+                pygame.draw.circle(self.screen, WHITE, pos, PADDLE_RADIUS, 3) # Sorotan paddle pemain juga putih agar kontras
 
         # Gambar shadow puck
         puck_data = state['puck']
@@ -118,11 +95,11 @@ class Renderer:
             # Semakin jauh ke belakang (i lebih besar), semakin pudar dan kecil
             alpha = max(0, 255 - i * (255 // len(self.puck_trail)))
             radius = max(1, PUCK_RADIUS - i * (PUCK_RADIUS // len(self.puck_trail)))
-
+            
             # Buat permukaan sementara dengan alpha channel
             s = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(s, (50, 50, 50, alpha), (radius, radius), radius) # Warna shadow abu-abu gelap
-            self.screen.blit(s, (pos.x - radius, pos.y - radius) if hasattr(pos, 'x') else (pos_tuple_x - radius, pos_tuple_y - radius))
+            pygame.draw.circle(s, (100, 100, 100, alpha), (radius, radius), radius) # Warna abu-abu gelap untuk shadow
+            self.screen.blit(s, (pos[0] - radius, pos[1] - radius))
 
         # Gambar puck utama (warna putih)
         pygame.draw.circle(self.screen, WHITE, current_puck_pos, PUCK_RADIUS)
@@ -134,8 +111,8 @@ class Renderer:
         p1_score_text = str(scores.get('1', 0)) # Ambil skor Player 1
         p2_score_text = str(scores.get('2', 0)) # Ambil skor Player 2
 
-        p1_score = self.score_font.render(p1_score_text, True, LIGHT_BLUE)
-        p2_score = self.score_font.render(p2_score_text, True, LIGHT_RED)
+        p1_score = self.score_font.render(p1_score_text, True, BLUE)
+        p2_score = self.score_font.render(p2_score_text, True, RED)
         self.screen.blit(p1_score, (WIDTH / 4, 10))
         self.screen.blit(p2_score, (WIDTH * 3 / 4 - p2_score.get_width(), 10))
 
@@ -149,7 +126,7 @@ class Renderer:
             self.screen.blit(text2, rect2)
 
     def draw_countdown(self, number):
-        text = self.countdown_font.render(str(number), True, GLOW_COLOR)
+        text = self.countdown_font.render(str(number), True, GRAY)
         rect = text.get_rect(center=(WIDTH/2, HEIGHT/2))
         self.screen.blit(text, rect)
 
@@ -160,8 +137,6 @@ class NetworkClient:
         self.player_id = None
         self.latest_state = None
         self.running = True
-        self.connected = False
-        self.game_started = False
         self.lock = threading.Lock()
         self.buffer = ""
 
@@ -169,7 +144,7 @@ class NetworkClient:
         try:
             self.socket.connect(self.server_address)
             logging.info(f"Connected to server at {self.server_address}")
-
+            
             # Tunggu pesan inisialisasi dari server
             init_data_str = self._receive_message()
             if init_data_str:
@@ -177,7 +152,6 @@ class NetworkClient:
                 if data.get('type') == 'init':
                     self.player_id = data['player_id']
                     logging.info(f"Assigned Player ID: {self.player_id}")
-                    self.connected = True
                     return True
                 elif data.get('error'):
                     logging.error(f"Server error: {data['error']}")
@@ -186,7 +160,7 @@ class NetworkClient:
         except socket.error as e:
             logging.error(f"Connection failed: {e}")
             return False
-
+    
     def _receive_message(self):
         while '\n' not in self.buffer:
             try:
@@ -200,97 +174,73 @@ class NetworkClient:
         return message
 
     def listen(self):
-        while self.running and self.connected:
+        while self.running:
             message_str = self._receive_message()
             if message_str is None:
                 logging.error("Disconnected from server.")
-                self.connected = False
-                self.game_started = False
+                self.running = False
                 break
             try:
                 state = json.loads(message_str)
                 with self.lock:
                     self.latest_state = state
-                    if state['status'] == 'game_over':
-                        self.game_started = False # Go back to menu after game over
             except json.JSONDecodeError:
                 logging.warning(f"Received invalid JSON: {message_str}")
 
     def send_paddle_update(self, pos):
-        if self.connected and self.game_started:
-            try:
-                command = {'type': 'update_paddle', 'pos': pos}
-                self.socket.sendall((json.dumps(command) + '\n').encode('utf-8'))
-            except socket.error:
-                self.connected = False
-                self.game_started = False
+        try:
+            command = {'type': 'update_paddle', 'pos': pos}
+            self.socket.sendall((json.dumps(command) + '\n').encode('utf-8'))
+        except socket.error:
+            self.running = False
 
     def get_state(self):
         with self.lock:
             return self.latest_state
 
-    def start_listening(self):
+    def start(self):
         threading.Thread(target=self.listen, daemon=True).start()
 
     def close(self):
         self.running = False
-        if self.socket:
-            self.socket.close()
+        self.socket.close()
 
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Dark Air Hockey")
+    pygame.display.set_caption("Real-Time Air Hockey")
     clock = pygame.time.Clock()
     renderer = Renderer(screen)
-
+    
     server_ip = input(f"Masukkan IP server (default: {INPUT_SERVER_IP}): ") or INPUT_SERVER_IP
     client = NetworkClient(server_ip, SERVER_PORT)
 
-    menu_state = "main" # "main", "game"
-    start_button_rect = None
-    restart_button_rect = None
-    quit_button_rect = None
+    if not client.connect():
+        renderer.draw_message("Could not connect to server.")
+        pygame.time.wait(2000)
+        pygame.quit()
+        sys.exit()
 
-    client.running = True
+    client.start()
+    last_update_time = 0
+
     while client.running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 client.running = False
-            if menu_state == "main" or (menu_state == "game" and client.get_state() and client.get_state()['status'] == 'game_over'):
-                start_rect, restart_rect, quit_rect = renderer.draw_menu(message="game_over" if client.get_state() and client.get_state()['status'] == 'game_over' else "main")
-                start_button_rect = start_rect
-                restart_button_rect = restart_rect
-                quit_button_rect = quit_rect
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if start_button_rect and start_button_rect.collidepoint(event.pos):
-                        if not client.connected:
-                            if client.connect():
-                                client.start_listening()
-                        client.game_started = True
-                        menu_state = "game"
-                    elif restart_button_rect and restart_button_rect.collidepoint(event.pos) and client.get_state() and client.get_state()['status'] == 'game_over':
-                        client.game_started = True
-                        menu_state = "game"
-                        # Optionally send a reset signal to the server if needed for more complex game resets
-                    elif quit_button_rect and quit_button_rect.collidepoint(event.pos):
-                        client.running = False
-            elif menu_state == "game" and client.connected and client.game_started:
-                if event.type == pygame.MOUSEMOTION:
-                    client.send_paddle_update(event.pos)
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    client.send_paddle_update(event.pos) # Send on click as well
 
-                game_state = client.get_state()
-                renderer.draw(game_state, client.player_id)
-                if game_state and game_state['status'] == 'game_over':
-                    menu_state = "main" # Go back to menu after game over
-            else:
-                # Initial connection screen or error message
-                renderer.draw_menu("main") # Show menu even if not connected yet
+        # Kirim update posisi paddle dengan interval
+        current_time = time.time()
+        if current_time - last_update_time > (1 / 60): # Kirim 60x per detik
+             client.send_paddle_update(pygame.mouse.get_pos())
+             last_update_time = current_time
 
+        # Gambar state terbaru
+        game_state = client.get_state()
+        renderer.draw(game_state, client.player_id)
+        
         clock.tick(FPS)
-
+    
     client.close()
     pygame.quit()
     sys.exit()
