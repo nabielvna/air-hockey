@@ -6,6 +6,7 @@ import sys
 import logging
 import threading
 import time
+from collections import deque # Untuk menyimpan posisi puck sebelumnya
 from settings import *
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -16,11 +17,12 @@ class Renderer:
         self.score_font = pygame.font.Font(None, 74)
         self.info_font = pygame.font.Font(None, 50)
         self.countdown_font = pygame.font.Font(None, 150)
+        self.puck_trail = deque(maxlen=10) # Simpan 10 posisi puck terakhir
 
     def draw(self, state, player_id):
-        self.screen.fill(WHITE)
+        self.screen.fill(BLACK) # Papan menjadi hitam
         self.draw_board()
-        self.draw_goals() # Gambar gawang
+        self.draw_goals()
 
         if not state:
             self.draw_message("Connecting to server...")
@@ -53,9 +55,9 @@ class Renderer:
 
     def draw_goals(self):
         # Gawang kiri (Player 2 scores here)
-        pygame.draw.rect(self.screen, BLACK, (0, GOAL_Y_START, GOAL_WIDTH, GOAL_HEIGHT), 5)
+        pygame.draw.rect(self.screen, WHITE, (0, GOAL_Y_START, GOAL_WIDTH, GOAL_HEIGHT), 5) # Gawang putih
         # Gawang kanan (Player 1 scores here)
-        pygame.draw.rect(self.screen, BLACK, (WIDTH - GOAL_WIDTH, GOAL_Y_START, GOAL_WIDTH, GOAL_HEIGHT), 5)
+        pygame.draw.rect(self.screen, WHITE, (WIDTH - GOAL_WIDTH, GOAL_Y_START, GOAL_WIDTH, GOAL_HEIGHT), 5) # Gawang putih
 
     def draw_game_elements(self, state, player_id):
          # Gambar paddle
@@ -68,23 +70,42 @@ class Renderer:
             if pid == player_id:
                 pygame.draw.circle(self.screen, BLACK, pos, PADDLE_RADIUS, 3)
 
-        # Gambar puck
+        # Gambar shadow puck
         puck_data = state['puck']
-        pygame.draw.circle(self.screen, BLACK, (int(puck_data['x']), int(puck_data['y'])), PUCK_RADIUS)
+        current_puck_pos = (int(puck_data['x']), int(puck_data['y']))
+        self.puck_trail.appendleft(current_puck_pos) # Tambahkan posisi terbaru ke depan
+
+        for i, pos in enumerate(self.puck_trail):
+            # Hitung opasitas dan ukuran berdasarkan posisi dalam trail
+            # Semakin jauh ke belakang (i lebih besar), semakin pudar dan kecil
+            alpha = max(0, 255 - i * (255 // len(self.puck_trail)))
+            radius = max(1, PUCK_RADIUS - i * (PUCK_RADIUS // len(self.puck_trail)))
+            
+            # Buat permukaan sementara dengan alpha channel
+            s = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
+            pygame.draw.circle(s, (0, 0, 0, alpha), (radius, radius), radius) # Warna hitam untuk shadow
+            self.screen.blit(s, (pos[0] - radius, pos[1] - radius))
+
+        # Gambar puck utama
+        pygame.draw.circle(self.screen, BLACK, current_puck_pos, PUCK_RADIUS)
         
         # Gambar skor
         scores = state['scores']
-        p1_score = self.score_font.render(str(scores.get(1, 0)), True, BLUE)
-        p2_score = self.score_font.render(str(scores.get(2, 0)), True, RED)
+        # Pastikan key '1' dan '2' ada, berikan default 0 jika tidak
+        p1_score_text = str(scores.get('1', 0)) # Ambil skor Player 1
+        p2_score_text = str(scores.get('2', 0)) # Ambil skor Player 2
+
+        p1_score = self.score_font.render(p1_score_text, True, BLUE)
+        p2_score = self.score_font.render(p2_score_text, True, RED)
         self.screen.blit(p1_score, (WIDTH / 4, 10))
         self.screen.blit(p2_score, (WIDTH * 3 / 4 - p2_score.get_width(), 10))
 
     def draw_message(self, line1, line2=None):
-        text1 = self.info_font.render(line1, True, BLACK)
+        text1 = self.info_font.render(line1, True, WHITE) # Warna teks pesan disesuaikan untuk latar hitam
         rect1 = text1.get_rect(center=(WIDTH / 2, HEIGHT / 2 - 20))
         self.screen.blit(text1, rect1)
         if line2:
-            text2 = self.info_font.render(line2, True, BLACK)
+            text2 = self.info_font.render(line2, True, WHITE) # Warna teks pesan disesuaikan
             rect2 = text2.get_rect(center=(WIDTH / 2, HEIGHT / 2 + 30))
             self.screen.blit(text2, rect2)
 
