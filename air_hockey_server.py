@@ -66,11 +66,7 @@ class Game:
 
     def check_collisions(self):
         # Tumbukan dinding atas/bawah
-        if self.puck.y - PUCK_RADIUS <= 0:
-            self.puck.y = PUCK_RADIUS + 1 # Pindahkan sedikit ke dalam
-            self.puck.vy *= -1
-        elif self.puck.y + PUCK_RADIUS >= HEIGHT:
-            self.puck.y = HEIGHT - PUCK_RADIUS - 1 # Pindahkan sedikit ke dalam
+        if self.puck.y - PUCK_RADIUS <= 0 or self.puck.y + PUCK_RADIUS >= HEIGHT:
             self.puck.vy *= -1
 
         # Tumbukan paddle
@@ -81,12 +77,6 @@ class Game:
             if distance < PADDLE_RADIUS + PUCK_RADIUS:
                 # Fisika pantulan yang lebih baik
                 norm_x, norm_y = dist_x / distance, dist_y / distance
-                
-                # Pindahkan puck keluar dari tabrakan untuk mencegah tersangkut
-                overlap = (PADDLE_RADIUS + PUCK_RADIUS) - distance
-                self.puck.x -= norm_x * overlap
-                self.puck.y -= norm_y * overlap
-
                 self.puck.vx = norm_x * 9
                 self.puck.vy = norm_y * 9
                 # Tambahkan sedikit "spin" acak untuk menghindari gerakan bolak-balik yang membosankan
@@ -102,12 +92,8 @@ class Game:
              self.puck.y > GOAL_Y_START and self.puck.y < GOAL_Y_START + GOAL_HEIGHT:
             self.score_goal(1) # Player 1 mencetak gol
         # Tumbukan dinding samping jika bukan di area gawang
-        elif self.puck.x - PUCK_RADIUS <= 0:
-            self.puck.x = PUCK_RADIUS + 1 # Pindahkan sedikit ke dalam
-            self.puck.vx *= -1 # Pantulkan jika menabrak sisi kiri
-        elif self.puck.x + PUCK_RADIUS >= WIDTH:
-            self.puck.x = WIDTH - PUCK_RADIUS - 1 # Pindahkan sedikit ke dalam
-            self.puck.vx *= -1 # Pantulkan jika menabrak sisi kanan
+        elif self.puck.x - PUCK_RADIUS <= 0 or self.puck.x + PUCK_RADIUS >= WIDTH:
+            self.puck.vx *= -1 # Pantulkan jika menabrak sisi luar gawang
 
     def score_goal(self, player_id):
         self.scores[player_id] += 1
