@@ -27,10 +27,15 @@ GOAL_Y_START = (HEIGHT - GOAL_HEIGHT) / 2 # Posisi Y awal gawang
 HEALTH_CHECK_INTERVAL = 5  # seconds
 MAX_CONNECTIONS_PER_SERVER = 2  # Air hockey support 2 players per game
 
-# Warna
+# Warna - Dark Theme
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
-GRAY = (200, 200, 200)
-GREEN = (0, 255, 0)
+LIGHT_RED = (255, 100, 100)
+LIGHT_BLUE = (100, 100, 255)
+GLOW_COLOR = (75, 0, 130) # Deep Purple Glow
+SHADOW_COLOR = (50, 50, 50)
+
+GRAY = (200, 200, 200) # Digunakan untuk beberapa elemen UI/papan
+GREEN = (0, 255, 0) # Already in your settings.py
