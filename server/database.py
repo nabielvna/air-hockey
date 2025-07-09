@@ -1,6 +1,7 @@
 import sqlite3
 import threading
 import bcrypt
+import pandas as pd
 
 DB_FILE = '../gamedata.db'
 
@@ -37,6 +38,10 @@ class GameDB:
             
             conn.commit()
             print("Database initialized successfully")
+            
+            db = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table' AND name='players'", conn)
+            print(db.head)
+            
 
     def get_db_connection(self):
         conn = sqlite3.connect(self.db_file, check_same_thread=False)

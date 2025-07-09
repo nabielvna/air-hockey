@@ -1,7 +1,7 @@
 import pygame
 import requests
 import sys
-from graphics import get_font, draw_text, show_message, TEXT_COLOR, BLACK, P1_PADDLE_COLOR
+from client.graphics import get_font, draw_text, show_message, TEXT_COLOR, BLACK, P1_PADDLE_COLOR
 
 HTTP_SERVER_URL = 'http://127.0.0.1:8000'
 
