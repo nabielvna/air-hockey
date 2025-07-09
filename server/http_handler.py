@@ -131,7 +131,7 @@ class HttpServer:
                     </thead>
                     <tbody>{table_body_html}</tbody>
                 </table>
-                <p class="stats-note">F-A = Goals For - Goals Against | Database: SQLite</p>
+                <p class="stats-note">F-A = Goals For - Goals Against</p>
             </div>
         </body>
         </html>

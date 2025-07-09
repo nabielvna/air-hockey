@@ -2,8 +2,9 @@ import sqlite3
 import threading
 import bcrypt
 import pandas as pd
+import os
 
-DB_FILE = '../gamedata.db'
+DB_FILE = 'gamedata.db'
 
 class GameDB:
     def __init__(self, db_file=DB_FILE):
@@ -12,6 +13,9 @@ class GameDB:
         self.init_database()
 
     def init_database(self):
+        abspath = os.path.abspath(self.db_file)
+        print(f"Database file location: {abspath}")
+        
         with sqlite3.connect(self.db_file) as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -36,11 +40,11 @@ class GameDB:
                 END
             ''')
             
+            for row in cursor.execute('SELECT name FROM players'):
+                print(f"Player {row[0]} already exists in the database.")
+            
             conn.commit()
             print("Database initialized successfully")
-            
-            db = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table' AND name='players'", conn)
-            print(db.head)
             
 
     def get_db_connection(self):
