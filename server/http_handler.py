@@ -1,7 +1,7 @@
 from datetime import datetime
 import html
 import uuid
-from database import GameDB
+from server.database import GameDB
 
 class HttpServer:
     def __init__(self):
